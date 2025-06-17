@@ -31,6 +31,8 @@ function renderDiffs(diffs) {
   return diffs.map(diff => {
     let colorClass = '';
     let label = '';
+    let icon = '';
+    
     switch (diff.type) {
       case 'added':
         colorClass = 'diff-added';
@@ -39,17 +41,20 @@ function renderDiffs(diffs) {
       case 'removed':
         colorClass = 'diff-removed';
         label = 'Removed';
+        icon = diff.from === undefined ? '<span class="undefined-icon">✕</span>' : '';
         break;
       case 'changed':
         colorClass = 'diff-changed';
         label = 'Changed';
+        icon = (diff.from === undefined || diff.to === undefined) ? '<span class="undefined-icon">✕</span>' : '';
         break;
       case 'type':
         colorClass = 'diff-type';
         label = 'Type Changed';
+        icon = (diff.from === undefined || diff.to === undefined) ? '<span class="undefined-icon">✕</span>' : '';
         break;
     }
-    return `<div class="diff-row ${colorClass}"><strong>${label}:</strong> <span class="diff-path">${diff.path}</span><br> <span class="diff-from">${JSON.stringify(diff.from)}</span> <span class="diff-arrow">→</span> <span class="diff-to">${JSON.stringify(diff.to)}</span></div>`;
+    return `<div class="diff-row ${colorClass}">${icon}<strong>${label}:</strong> <span class="diff-path">${diff.path}</span><br> <span class="diff-from">${JSON.stringify(diff.from)}</span> <span class="diff-arrow">→</span> <span class="diff-to">${JSON.stringify(diff.to)}</span></div>`;
   }).join('');
 }
 
