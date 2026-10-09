@@ -3,9 +3,9 @@ services:
     build: .
     image: json-diff
     ports:
-      - "80:80"
+      - "5050:80"
     volumes:
       - ./:/usr/share/nginx/html
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
-    restart: always
+    # restart: always
     container_name: json-diff
