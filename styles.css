@@ -141,13 +141,21 @@ button:hover {
 .diff-header-actions {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
-.diff-export-actions {
-  display: inline-flex;
-  gap: 6px;
+.diff-action-sep {
+  display: inline-block;
+  width: 1px;
+  height: 20px;
+  background: #d0d7de;
+  flex: 0 0 auto;
+}
+
+.diff-export-dropdown {
+  position: relative;
+  display: inline-block;
 }
 
 .diff-export-btn {
@@ -173,6 +181,45 @@ button:hover {
 .diff-export-btn:disabled {
   opacity: 0.7;
   cursor: default;
+}
+
+.diff-export-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 120px;
+  padding: 4px 0;
+  background: #ffffff;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
+  z-index: 5;
+}
+
+.diff-export-dropdown.open .diff-export-menu {
+  display: block;
+}
+
+.diff-export-option {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: #24292f;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  line-height: 20px;
+}
+
+.diff-export-option:hover {
+  background: #f3f4f6;
 }
 
 .diff-view-toggle {
