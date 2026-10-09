@@ -1,5 +1,7 @@
 let viewMode = 'split';
 let currentOps = null;
+let currentLeft = null;
+let currentRight = null;
 
 function pretty(obj) {
   return JSON.stringify(obj, null, 2);
@@ -93,6 +95,105 @@ function countChanges(ops) {
   return { added, removed };
 }
 
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function buildChangedObject(left, right) {
+  if (Object.is(left, right)) return undefined;
+
+  if (isPlainObject(left) && isPlainObject(right)) {
+    const out = {};
+    let hasChange = false;
+    const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+    for (const key of keys) {
+      if (!(key in right)) {
+        out[key] = null;
+        hasChange = true;
+      } else if (!(key in left)) {
+        out[key] = right[key];
+        hasChange = true;
+      } else {
+        const child = buildChangedObject(left[key], right[key]);
+        if (child !== undefined) {
+          out[key] = child;
+          hasChange = true;
+        }
+      }
+    }
+    return hasChange ? out : undefined;
+  }
+
+  if (Array.isArray(left) && Array.isArray(right)) {
+    if (JSON.stringify(left) === JSON.stringify(right)) return undefined;
+    return right;
+  }
+
+  return right;
+}
+
+function buildExportPayload(left, right) {
+  const changed = buildChangedObject(left, right);
+  return changed === undefined ? {} : changed;
+}
+
+function getExportJsonText() {
+  if (currentLeft === null || currentRight === null) return null;
+  return JSON.stringify(buildExportPayload(currentLeft, currentRight), null, 2);
+}
+
+function downloadExportJson() {
+  const text = getExportJsonText();
+  if (text == null) return;
+  const blob = new Blob([text], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'diff-export.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function copyTextFallback(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+  } finally {
+    ta.remove();
+  }
+}
+
+async function copyExportJson(btn) {
+  const text = getExportJsonText();
+  if (text == null) return;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      copyTextFallback(text);
+    }
+  } catch (e) {
+    copyTextFallback(text);
+  }
+  if (btn) {
+    const original = btn.textContent;
+    btn.textContent = 'Copied!';
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.textContent = original;
+      btn.disabled = false;
+    }, 1500);
+  }
+}
+
 function buildSplitRows(ops) {
   const rows = [];
   let i = 0;
@@ -142,9 +243,15 @@ function renderHeader(added, removed) {
           <span class="diff-stat-remove">−${removed}</span>
         </span>
       </div>
-      <div class="diff-view-toggle" role="group" aria-label="Diff view">
-        <button type="button" class="diff-toggle-btn${viewMode === 'unified' ? ' active' : ''}" data-view="unified">Unified</button>
-        <button type="button" class="diff-toggle-btn${viewMode === 'split' ? ' active' : ''}" data-view="split">Split</button>
+      <div class="diff-header-actions">
+        <div class="diff-export-actions">
+          <button type="button" class="diff-export-btn" data-export="copy">Copy JSON</button>
+          <button type="button" class="diff-export-btn" data-export="download">Download JSON</button>
+        </div>
+        <div class="diff-view-toggle" role="group" aria-label="Diff view">
+          <button type="button" class="diff-toggle-btn${viewMode === 'unified' ? ' active' : ''}" data-view="unified">Unified</button>
+          <button type="button" class="diff-toggle-btn${viewMode === 'split' ? ' active' : ''}" data-view="split">Split</button>
+        </div>
       </div>
     </div>
   `;
@@ -249,8 +356,21 @@ window.addEventListener('DOMContentLoaded', function() {
 });
 
 document.getElementById('result').addEventListener('click', function(e) {
+  if (!currentOps) return;
+
+  const exportBtn = e.target.closest('.diff-export-btn');
+  if (exportBtn) {
+    const action = exportBtn.getAttribute('data-export');
+    if (action === 'copy') {
+      copyExportJson(exportBtn);
+    } else if (action === 'download') {
+      downloadExportJson();
+    }
+    return;
+  }
+
   const btn = e.target.closest('.diff-toggle-btn');
-  if (!btn || !currentOps) return;
+  if (!btn) return;
   const next = btn.getAttribute('data-view');
   if (next !== 'unified' && next !== 'split') return;
   if (next === viewMode) return;
@@ -269,6 +389,8 @@ document.getElementById('compareBtn').addEventListener('click', function() {
     obj1 = JSON.parse(json1Text);
   } catch (e) {
     currentOps = null;
+    currentLeft = null;
+    currentRight = null;
     resultBox.innerHTML = '<span class="diff-error">First input is not valid JSON.</span>';
     return;
   }
@@ -276,12 +398,16 @@ document.getElementById('compareBtn').addEventListener('click', function() {
     obj2 = JSON.parse(json2Text);
   } catch (e) {
     currentOps = null;
+    currentLeft = null;
+    currentRight = null;
     resultBox.innerHTML = '<span class="diff-error">Second input is not valid JSON.</span>';
     return;
   }
 
   const leftLines = pretty(obj1).split('\n');
   const rightLines = pretty(obj2).split('\n');
+  currentLeft = obj1;
+  currentRight = obj2;
   currentOps = diffLines(leftLines, rightLines);
   paintResult();
 });
@@ -294,6 +420,8 @@ if (clearBtn) {
     localStorage.removeItem('json1');
     localStorage.removeItem('json2');
     currentOps = null;
+    currentLeft = null;
+    currentRight = null;
     document.getElementById('result').innerHTML = '';
   });
 }
