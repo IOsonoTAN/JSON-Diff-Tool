@@ -157,7 +157,7 @@ function renderUnified(ops) {
         <td class="diff-gutter diff-gutter-old">${op.leftNo}</td>
         <td class="diff-gutter diff-gutter-new">${op.rightNo}</td>
         <td class="diff-sign"> </td>
-        <td class="diff-code">${escapeHtml(op.left)}</td>
+        <td class="diff-code-cell"><span class="diff-code">${escapeHtml(op.left)}</span></td>
       </tr>`;
     }
     if (op.type === 'remove') {
@@ -165,42 +165,52 @@ function renderUnified(ops) {
         <td class="diff-gutter diff-gutter-old">${op.leftNo}</td>
         <td class="diff-gutter diff-gutter-new"></td>
         <td class="diff-sign">-</td>
-        <td class="diff-code">${escapeHtml(op.left)}</td>
+        <td class="diff-code-cell"><span class="diff-code">${escapeHtml(op.left)}</span></td>
       </tr>`;
     }
     return `<tr class="diff-line diff-line-add">
       <td class="diff-gutter diff-gutter-old"></td>
       <td class="diff-gutter diff-gutter-new">${op.rightNo}</td>
       <td class="diff-sign">+</td>
-      <td class="diff-code">${escapeHtml(op.right)}</td>
+      <td class="diff-code-cell"><span class="diff-code">${escapeHtml(op.right)}</span></td>
     </tr>`;
   }).join('');
 
   return `<div class="diff-body diff-unified"><table class="diff-table"><tbody>${lines}</tbody></table></div>`;
 }
 
+function renderSplitCell(side, which) {
+  const kind = side.kind;
+  const sign = kind === 'remove' ? '-' : kind === 'add' ? '+' : kind === 'equal' ? ' ' : '';
+  const no = side.no === '' || side.no == null ? '' : side.no;
+  const text = side.text || '';
+  const prefix = which === 'left' ? 'diff-split-left' : 'diff-split-right';
+  return `
+    <td class="${prefix}-gutter diff-side-${kind}">${no}</td>
+    <td class="${prefix}-sign diff-side-${kind}">${sign}</td>
+    <td class="${prefix}-code diff-side-${kind}"><span class="diff-code">${escapeHtml(text)}</span></td>
+  `;
+}
+
 function renderSplit(ops) {
   const rows = buildSplitRows(ops);
   const lines = rows.map(row => {
-    const leftClass = `diff-side-cell diff-side-${row.left.kind}`;
-    const rightClass = `diff-side-cell diff-side-${row.right.kind}`;
-    const leftSign = row.left.kind === 'remove' ? '-' : row.left.kind === 'equal' ? ' ' : '';
-    const rightSign = row.right.kind === 'add' ? '+' : row.right.kind === 'equal' ? ' ' : '';
-    return `<tr class="diff-split-row">
-      <td class="${leftClass}">
-        <span class="diff-gutter">${row.left.no}</span>
-        <span class="diff-sign">${leftSign}</span>
-        <span class="diff-code">${escapeHtml(row.left.text)}</span>
-      </td>
-      <td class="${rightClass}">
-        <span class="diff-gutter">${row.right.no}</span>
-        <span class="diff-sign">${rightSign}</span>
-        <span class="diff-code">${escapeHtml(row.right.text)}</span>
-      </td>
-    </tr>`;
+    return `<tr class="diff-split-row">${renderSplitCell(row.left, 'left')}${renderSplitCell(row.right, 'right')}</tr>`;
   }).join('');
 
-  return `<div class="diff-body diff-split"><table class="diff-split-table"><tbody>${lines}</tbody></table></div>`;
+  return `<div class="diff-body diff-split">
+    <table class="diff-split-table">
+      <colgroup>
+        <col class="diff-col-gutter">
+        <col class="diff-col-sign">
+        <col class="diff-col-code">
+        <col class="diff-col-gutter">
+        <col class="diff-col-sign">
+        <col class="diff-col-code">
+      </colgroup>
+      <tbody>${lines}</tbody>
+    </table>
+  </div>`;
 }
 
 function renderDiff(ops) {
